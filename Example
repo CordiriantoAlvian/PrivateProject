@@ -1,0 +1,1739 @@
+package main;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Set;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+
+import Database.Connect;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.geometry.HPos;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
+
+public class Main extends Application {
+	private Double role;
+
+	private Stage primaryStage;
+
+	private Set<String> existingEmails = new HashSet<>();
+
+	private TextField emailField;
+	private TextField usernameField;
+	private PasswordField passwordField;
+	private PasswordField confirmPasswordField;
+	private TextField phoneField;
+
+	private TextField emailLoginField;
+	private PasswordField passwordLoginField;
+
+	public static void main(String[] args) {
+		launch(args);
+	}
+
+	@Override
+	public void start(Stage primaryStage) throws Exception {
+		this.primaryStage = primaryStage;
+		showLoginScene();
+	}
+
+	private void RegisterScene() {
+		primaryStage.setTitle("SNeam");
+
+		BorderPane borderPane = new BorderPane();
+		borderPane.setStyle("-fx-background-color: #f0f0f0;");
+
+		MenuBar menuBar = new MenuBar();
+		Menu menu = new Menu("Menu");
+
+		MenuItem loginItem = new MenuItem("Login");
+		loginItem.setOnAction(e -> showLoginScene());
+
+		menu.getItems().add(loginItem);
+		menuBar.getMenus().add(menu);
+		borderPane.setTop(menuBar);
+
+		GridPane gridPane = new GridPane();
+		gridPane.setAlignment(Pos.CENTER);
+		gridPane.setHgap(10);
+		gridPane.setVgap(10);
+		gridPane.setPadding(new Insets(20));
+
+		Label registerLabel = new Label("Register");
+		registerLabel.setFont(Font.font("Arial", FontWeight.BOLD, 28));
+		GridPane.setColumnSpan(registerLabel, 2);
+		GridPane.setHalignment(registerLabel, javafx.geometry.HPos.CENTER);
+
+		Label emailLabel = new Label("Email");
+		emailField = new TextField();
+		emailField.setOnKeyPressed(event -> {
+			if (event.getCode().equals(KeyCode.ENTER)) {
+				if (!isValidEmail(emailField.getText(), existingEmails)) {
+					invalidEmailAlert();
+					return;
+				}
+
+			}
+		}
+
+		);
+
+		Label usernameLabel = new Label("Username");
+		usernameField = new TextField();
+		usernameField.setOnKeyPressed(event -> {
+			if (event.getCode().equals(KeyCode.ENTER)) {
+				String username = usernameField.getText();
+				if (!(username.length() >= 4 && username.length() <= 20)) {
+					invalidUsernameAlert();
+					return;
+				}
+
+			}
+		}
+
+		);
+
+		Label passwordLabel = new Label("Password");
+		passwordField = new PasswordField();
+		passwordField.setOnKeyPressed(event -> {
+			if (event.getCode().equals(KeyCode.ENTER)) {
+				String password = passwordField.getText();
+				if (!(password.length() >= 6 && password.length() <= 20 && isAlphanumeric(password))) {
+					invalidPasswordAlert();
+					return;
+				}
+			}
+		});
+
+		Label confirmPasswordLabel = new Label("Confirm Password:");
+		confirmPasswordField = new PasswordField();
+		confirmPasswordField.setOnKeyPressed(event -> {
+			if (event.getCode().equals(KeyCode.ENTER)) {
+
+				String password = passwordField.getText();
+				String confirmPassword = confirmPasswordField.getText();
+
+				if (!password.equals(confirmPassword)) {
+					invalidConfirmPasswordAlert();
+					return;
+				}
+			}
+		});
+
+		Label phoneLabel = new Label("Phone Number");
+		phoneField = new TextField();
+		phoneField.setOnKeyPressed(event -> {
+			if (event.getCode().equals(KeyCode.ENTER)) {
+
+				String phone = phoneField.getText();
+
+				if (!isValidPhoneNumber(phone)) {
+					invalidPhoneNumberAlert();
+					return;
+				}
+			}
+		});
+
+		Button registerButton = new Button("Register");
+		registerButton.setOnAction(e -> {
+			String email = emailField.getText();
+			String username = usernameField.getText();
+			String password = passwordField.getText();
+			String confirmPassword = confirmPasswordField.getText();
+			String phone = phoneField.getText();
+
+			// last validation
+			// shows all individual errors
+			if (!isValidEmail(emailField.getText(), existingEmails)) {
+				invalidEmailAlert();
+				return;
+			}
+
+			if (!(username.length() >= 4 && username.length() <= 20)) {
+				invalidUsernameAlert();
+				return;
+			}
+
+			if (!(password.length() >= 6 && password.length() <= 20 && isAlphanumeric(password))) {
+				invalidPasswordAlert();
+				return;
+			}
+
+			if (!password.equals(confirmPassword)) {
+				invalidConfirmPasswordAlert();
+				return;
+			}
+
+			if (!isValidPhoneNumber(phone)) {
+				invalidPhoneNumberAlert();
+				return;
+			}
+
+			existingEmails.add(email);
+
+			String generatedID = generateUserID();
+			String role = "customer";
+
+			if (addUserToDatabase(generatedID, email, username, password, phone, role)) {
+				registrationSuccessAlert();
+				showLoginScene();
+			} else {
+				registrationFailureAlert();
+			}
+		});
+
+		gridPane.add(registerLabel, 0, 0, 2, 1);
+		gridPane.add(emailLabel, 1, 1);
+		gridPane.add(emailField, 1, 2);
+		gridPane.add(usernameLabel, 1, 3);
+		gridPane.add(usernameField, 1, 4);
+		gridPane.add(passwordLabel, 1, 5);
+		gridPane.add(passwordField, 1, 6);
+		gridPane.add(confirmPasswordLabel, 1, 7);
+		gridPane.add(confirmPasswordField, 1, 8);
+		gridPane.add(phoneLabel, 1, 9);
+		gridPane.add(phoneField, 1, 10);
+		gridPane.add(registerButton, 1, 12);
+
+		borderPane.setCenter(gridPane);
+
+		Scene scene = new Scene(borderPane, 700, 700);
+		primaryStage.setScene(scene);
+		primaryStage.show();
+	}// showRegisterScene
+
+	private String generateUserID() {
+		Connect connect = Connect.getConnection();
+
+		// hitung jumlah user
+		String query = "SELECT COUNT(*) AS userCount FROM user";
+
+		try (PreparedStatement countStatement = connect.prepareStatement(query)) {
+			ResultSet resultSet = countStatement.executeQuery();
+			if (resultSet.next()) {
+				int userCount = resultSet.getInt("userCount");
+				// generate id dari jumlah user + 1 biar ga ada yg sama
+				int nextUserIndex = userCount + 1;
+				return String.format("AC%03d", nextUserIndex);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		// kalo error
+		return "AC000";
+	}
+
+	private boolean addUserToDatabase(String userID, String email, String username, String password, String phone,
+			String role) {
+
+		Connect connect = Connect.getConnection();
+
+		String query = "INSERT INTO user (UserID, Username, Password, Email, PhoneNumber, Role) VALUES (?, ?, ?, ?, ?, ?)";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+
+			statement.setString(1, userID);
+			statement.setString(2, username);
+			statement.setString(3, password);
+			statement.setString(4, email);
+			statement.setString(5, phone);
+			statement.setString(6, role);
+
+			int rowsAffected = statement.executeUpdate();
+
+			return rowsAffected > 0;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return false;
+		}
+
+	}
+
+	private void registrationFailureAlert() {
+		Alert alert = new Alert(AlertType.ERROR);
+		alert.setTitle("Registration Failed");
+		alert.setHeaderText(null);
+		alert.setContentText("Failed to register user. Please try again.");
+
+		alert.getButtonTypes().setAll(ButtonType.OK);
+
+		alert.showAndWait();
+	}
+
+	private boolean isValidEmail(String email, Set<String> existingEmails) {
+		int atIndex = email.indexOf('@');
+		boolean isValidFormat = atIndex > 0 && atIndex < email.length() - 1 && !existingEmails.contains(email);
+		boolean isValidDatabase = checkEmailExistsInDatabase(email);
+		return isValidFormat && isValidDatabase;
+	}
+
+	private boolean checkEmailExistsInDatabase(String email) {
+		Connect connect = Connect.getConnection();
+		String query = "SELECT COUNT(*) AS emailCount FROM user WHERE Email = ?";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, email);
+			ResultSet resultSet = statement.executeQuery();
+
+			if (resultSet.next()) {
+				int emailCount = resultSet.getInt("emailCount");
+				return emailCount == 0; // Email is valid if it doesn't exist in the database
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		return false; // Return false in case of an exception
+	}
+
+	private void invalidEmailAlert() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Invalid Input");
+		alert.setHeaderText("Email is Invalid.");
+		alert.setContentText("Email must contain '@' and unique");
+
+		alert.getButtonTypes().setAll(ButtonType.OK);
+
+		alert.showAndWait();
+	}
+
+	private void invalidUsernameAlert() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Invalid Input");
+		alert.setHeaderText("Username is Invalid.");
+		alert.setContentText("Username must contain 4-20 characters.");
+
+		alert.getButtonTypes().setAll(ButtonType.OK);
+
+		alert.showAndWait();
+	}
+
+	private boolean isAlphanumeric(String str) {
+		for (char c : str.toCharArray()) {
+			if (!Character.isLetterOrDigit(c)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private void invalidPasswordAlert() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Invalid Input");
+		alert.setHeaderText("Password is Invalid.");
+		alert.setContentText("Password must contain 6-20 characters and be alphanumeric.");
+
+		alert.getButtonTypes().setAll(ButtonType.OK);
+
+		alert.showAndWait();
+	}
+
+	private void invalidConfirmPasswordAlert() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Invalid Input");
+		alert.setHeaderText("Confirm Password is Invalid.");
+		alert.setContentText("Passwords do not match.");
+
+		alert.getButtonTypes().setAll(ButtonType.OK);
+
+		alert.showAndWait();
+	}
+
+	private boolean isValidPhoneNumber(String phone) {
+		if (phone.length() < 9 || phone.length() > 20) {
+			return false;
+		}
+		for (char c : phone.toCharArray()) {
+			if (!Character.isDigit(c)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private void invalidPhoneNumberAlert() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Invalid Input");
+		alert.setHeaderText("Phone Number is Invalid.");
+		alert.setContentText("Phone Number must be numeric and have 9-20 digits.");
+
+		alert.getButtonTypes().setAll(ButtonType.OK);
+
+		alert.showAndWait();
+	}
+
+	private void registrationSuccessAlert() {
+		Alert alert = new Alert(AlertType.INFORMATION);
+		alert.setTitle("Registration Successful");
+		alert.setHeaderText(null);
+		alert.setContentText("User registered successfully!");
+
+		alert.setOnCloseRequest(event -> {
+			emailField.clear();
+			usernameField.clear();
+			passwordField.clear();
+			confirmPasswordField.clear();
+			phoneField.clear();
+		});
+
+		alert.showAndWait();
+	}
+
+//  -----------------------------------------------------------------------------------------------
+//   INI LOGINNNNNNNN
+//  -----------------------------------------------------------------------------------------------
+
+	private void showLoginScene() {
+		primaryStage.setTitle("SNeam");
+
+		BorderPane borderPane = new BorderPane();
+		borderPane.setStyle("-fx-background-color: #f0f0f0;");
+
+		MenuBar menuBar = new MenuBar();
+		Menu menu = new Menu("Menu");
+
+		MenuItem registerItem = new MenuItem("Register");
+		registerItem.setOnAction(e -> RegisterScene());
+
+		menu.getItems().add(registerItem);
+		menuBar.getMenus().add(menu);
+		borderPane.setTop(menuBar);
+
+		GridPane gridPane = new GridPane();
+		gridPane.setAlignment(Pos.CENTER);
+		gridPane.setHgap(10);
+		gridPane.setVgap(10);
+		gridPane.setPadding(new Insets(20));
+
+		Label loginLabel = new Label("LOGIN");
+		loginLabel.setFont(Font.font("Arial", FontWeight.BOLD, 28));
+		GridPane.setColumnSpan(loginLabel, 2);
+		GridPane.setHalignment(loginLabel, javafx.geometry.HPos.CENTER);
+
+		Label emailLabel = new Label("Email");
+		emailLoginField = new TextField();
+
+		Label passwordLabel = new Label("Password");
+		passwordLoginField = new PasswordField();
+
+		Button loginButton = new Button("Login");
+		loginButton.setOnAction(e -> {
+			String username = emailLoginField.getText();
+			String password = passwordLoginField.getText();
+
+			String userID = validateUser(username, password);
+			if (userID != null) {
+				System.out.println("Login successful.\nUserID: " + userID);
+			} else {
+				System.out.println("Invalid email or password");
+			}
+		});
+
+		gridPane.add(loginLabel, 0, 0, 2, 1);
+		gridPane.add(emailLabel, 1, 1);
+		gridPane.add(emailLoginField, 1, 2);
+		gridPane.add(passwordLabel, 1, 3);
+		gridPane.add(passwordLoginField, 1, 4);
+		gridPane.add(loginButton, 1, 6);
+
+		gridPane.setHalignment(loginButton, HPos.CENTER);
+
+		borderPane.setCenter(gridPane);
+
+		Scene scene = new Scene(borderPane, 700, 700);
+		primaryStage.setScene(scene);
+		primaryStage.show();
+	} // showLoginScene
+
+	private String validateUser(String username, String password) {
+		Connect connect = Connect.getConnection();
+
+		String query = "SELECT * FROM user WHERE username = ? AND password = ?";
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, username);
+			statement.setString(2, password);
+
+			ResultSet resultSet = statement.executeQuery();
+
+			if (resultSet.next()) {
+				String userID = resultSet.getString("userID");
+				String usernameFromDB = resultSet.getString("username");
+
+				String userRole = resultSet.getString("role");
+
+				if ("admin".equals(userRole)) {
+					Platform.runLater(() -> AdminHomeScene());
+				} else if ("customer".equals(userRole)) {
+					Platform.runLater(() -> CustomerHomeScene());
+				}
+
+				LoggedUser.setLoggedUser(userID, usernameFromDB);
+
+				return userID;
+			} else {
+				Platform.runLater(() -> InvalidCredentialsAlert());
+				return null;
+			}
+		} catch (SQLException e) {
+			Platform.runLater(() -> InvalidCredentialsAlert());
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private void InvalidCredentialsAlert() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Invalid Request");
+		alert.setHeaderText("Wrong Credentials");
+		alert.setContentText("Email or password is invalid.");
+
+		alert.getButtonTypes().setAll(ButtonType.OK);
+
+		alert.setOnCloseRequest(event -> {
+			emailLoginField.clear();
+			passwordLoginField.clear();
+		});
+
+		alert.showAndWait();
+	}
+
+//  -----------------------------------------------------------------------------------------------
+//  INI SHOW ADMIN HOME SCENE
+//  -----------------------------------------------------------------------------------------------
+
+//    private void AdminHomeScene() {
+//        primaryStage.setTitle("SNeam");
+//
+//        BorderPane borderPane = new BorderPane();
+//        borderPane.setStyle("-fx-background-color: #f0f0f0;");
+//
+//        MenuBar menuBar = new MenuBar();
+//
+//        Menu menu1 = new Menu("Log Out");
+//        MenuItem menuItem1 = new MenuItem("Log Out");
+//        menu1.getItems().addAll(menuItem1);
+//
+//        menuBar.getMenus().addAll(menu1);
+//        borderPane.setTop(menuBar);
+//        
+//        menuItem1.setOnAction(event -> {
+//            showLoginScene();
+//        });
+//
+//        // ADD CONTENT HERE
+//
+//        HBox contentHBox = new HBox(); // Horizontal box for layout
+//        borderPane.setCenter(contentHBox);
+//
+//        // Listview on the left
+//        ListView<String> gameListView = new ListView<>();
+//        GameList(gameListView);
+//        gameListView.setMaxWidth(220); // Set the maximum width
+//        gameListView.setMaxHeight(220); // Set the maximum height
+//        contentHBox.getChildren().add(gameListView);
+//
+//        // VBox for display details on the right
+//        VBox gameDetailsVBox = new VBox();
+//        contentHBox.getChildren().add(gameDetailsVBox);
+//
+//        gameListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+//            if (newValue != null) {
+//                showGameDetails(newValue, gameDetailsVBox);
+//            }
+//        });
+//
+//        Scene scene = new Scene(borderPane, 700, 700);
+//        primaryStage.setScene(scene);
+//        primaryStage.show();
+//    }
+
+	// YG DIATAS INI SUDAH OKE SBNRNYA CM KURANG TEXTFIELD
+	// YG DIATAS INI BUAT NOTES VANES AJA SII, BUAT MISAL ERROR BS BALIK SITU :D
+	// DELETE SJ TAKPA
+
+	private String toUpdate;
+
+	private void AdminHomeScene() {
+
+		role = 2.0;
+
+		primaryStage.setTitle("SNeam");
+
+		BorderPane borderPane = new BorderPane();
+		borderPane.setStyle("-fx-background-color: #f0f0f0;");
+
+		MenuBar menuBar = new MenuBar();
+
+		Menu menu1 = new Menu("Log Out");
+		MenuItem menuItem1 = new MenuItem("Log Out");
+		menu1.getItems().addAll(menuItem1);
+
+		menuBar.getMenus().addAll(menu1);
+		borderPane.setTop(menuBar);
+
+		menuItem1.setOnAction(event -> {
+			showLoginScene();
+		});
+
+		// Mencoba Heder
+
+		VBox topContainer = new VBox();
+		topContainer.setAlignment(Pos.CENTER);
+		Label welcomeLabel = new Label("Hello, Admin");
+		welcomeLabel.setStyle("-fx-font-size: 36; -fx-font-weight: bold;");
+		welcomeLabel.setPadding(new Insets(10, 0, 0, 10));
+		topContainer.getChildren().add(menuBar);
+		topContainer.getChildren().add(welcomeLabel);
+		borderPane.setTop(topContainer);
+
+		// mencoba middle
+		HBox contentHBox = new HBox();
+		borderPane.setCenter(contentHBox);
+		ListView<String> gameListView = new ListView<>();
+		GameList(gameListView);
+		gameListView.setMaxWidth(220);
+		gameListView.setMaxHeight(220);
+		contentHBox.getChildren().add(gameListView);
+
+		// padding
+		Region space = new Region();
+		contentHBox.getChildren().add(space);
+		space.setPadding(new Insets(0, 10, 0, 10));
+
+		// bagian kanan
+		VBox contentVBox = new VBox();
+		VBox detailsAndAdminVBox = new VBox();
+		VBox gameDetailsVBox = new VBox();
+
+		contentHBox.getChildren().add(gameDetailsVBox);
+		detailsAndAdminVBox.getChildren().add(gameDetailsVBox);
+
+		contentHBox.getChildren().add(gameDetailsVBox);
+		contentHBox.setPadding(new Insets(0, 20, 0, 20));
+
+		// buat display menu admin dibawah
+
+		// Membuat VBox untuk adminLabel
+		VBox adminLabelVBox = new VBox();
+		Label adminLabel = new Label("admin menu");
+		adminLabel.setStyle("-fx-font-size: 12; -fx-font-weight: bold;");
+		adminLabel.setPadding(new Insets(10, 0, 0, 10));
+		adminLabelVBox.setAlignment(Pos.CENTER);
+		adminLabelVBox.getChildren().add(adminLabel);
+
+		// Membuat input fields
+		Label changeTitleLabel = new Label("Game Title");
+		TextField titleTextField = new TextField();
+
+		Label changeDescriptionLabel = new Label("Game Description");
+		TextArea descriptionTextField = new TextArea();
+
+		Label changePriceLabel = new Label("Price");
+		TextField priceTextField = new TextField();
+
+		// listviewobserve
+		gameListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) {
+				toUpdate = newName(newValue).get(0);
+				showGameDetails(newValue, gameDetailsVBox);
+				titleTextField.setText(newName(newValue).get(0));
+				descriptionTextField.setText(newName(newValue).get(1));
+				priceTextField.setText(newName(newValue).get(2));
+
+			}
+
+		});
+
+		// Membuat tombol
+		Button addBtn = new Button("Add Game");
+		addBtn.setOnAction(event -> {
+			// Validate and add the game
+			String gameID = generateGameID();
+			if (validateGameInput(titleTextField.getText(), descriptionTextField.getText(), priceTextField.getText())) {
+				addGame(titleTextField.getText(), descriptionTextField.getText(), priceTextField.getText(), gameID);
+				showSuccessAlert("Game Added successfully!");
+
+				// Refresh the admin home scene
+				AdminHomeScene();
+			}
+		});
+
+		Button updateBtn = new Button("Update Game");
+
+		updateBtn.setOnAction(event -> {
+			if (!titleTextField.getText().isBlank()) {
+				if (validateGameInput(titleTextField.getText(), descriptionTextField.getText(),
+						priceTextField.getText())) {
+					updateGame(toUpdate, titleTextField.getText(), descriptionTextField.getText(),
+							priceTextField.getText());
+					showSuccessAlert("Game Updated successfully!");
+
+					// Refresh the admin home scene
+					AdminHomeScene();
+				}
+
+			}
+
+		});
+
+		Button deleteBtn = new Button("Delete Game");
+
+		deleteBtn.setOnAction(event -> {
+			if (!titleTextField.getText().isBlank()) {
+
+				deleteGame(toUpdate, titleTextField.getText());
+				showSuccessAlert("Game Deleted successfully!");
+
+				// Refresh the admin home scene
+				AdminHomeScene();
+			}
+
+		});
+
+		addBtn.setPrefWidth(100); // Atur lebar yang diinginkan
+		updateBtn.setPrefWidth(100); // Atur lebar yang diinginkan
+		deleteBtn.setPrefWidth(100); // Atur lebar yang diinginkan
+
+		addBtn.setPrefHeight(100); // Atur lebar yang diinginkan
+		updateBtn.setPrefHeight(100); // Atur lebar yang diinginkan
+		deleteBtn.setPrefHeight(100); // Atur lebar yang diinginkan
+		// Membuat HBox untuk input fields dan tombol
+		VBox inputVBox = new VBox(10);
+
+		inputVBox.getChildren().addAll(changeTitleLabel, titleTextField, changeDescriptionLabel, descriptionTextField,
+				changePriceLabel, priceTextField);
+
+		VBox buttonVBox = new VBox(10);
+		buttonVBox.setAlignment(Pos.CENTER);
+		buttonVBox.getChildren().addAll(addBtn, updateBtn, deleteBtn);
+
+		// Membuat HBox untuk menyatukan VBox input fields dan VBox tombol
+		HBox adminMenuHBox = new HBox(10);
+		adminMenuHBox.setAlignment(Pos.CENTER);
+		adminMenuHBox.getChildren().addAll(inputVBox, buttonVBox);
+		adminMenuHBox.setPadding(new Insets(10, 20, 20, 10));
+
+		// Membuat VBox untuk menyatukan adminLabelVBox dan adminMenuHBox
+		VBox bottomVBox = new VBox();
+		bottomVBox.getChildren().addAll(adminLabelVBox, adminMenuHBox);
+		bottomVBox.setPadding(new Insets(10, 20, 20, 10));
+
+		// Menempatkan bottomVBox ke bagian bawah BorderPane
+		borderPane.setBottom(bottomVBox);
+
+		Scene scene = new Scene(borderPane, 700, 700);
+		primaryStage.setScene(scene);
+		primaryStage.show();
+	}
+
+////	
+//	private void AdminHomeScene() {
+//		primaryStage.setTitle("SNeam");
+//
+//		role = 2.0;
+//
+//		BorderPane borderPane = new BorderPane();
+//		borderPane.setStyle("-fx-background-color: #f0f0f0;");
+//
+//		MenuBar menuBar = new MenuBar();
+//
+//		Menu menu1 = new Menu("Log Out");
+//		MenuItem menuItem1 = new MenuItem("Log Out");
+//		menu1.getItems().addAll(menuItem1);
+//
+//		menuBar.getMenus().addAll(menu1);
+//		borderPane.setTop(menuBar);
+//
+//		menuItem1.setOnAction(event -> {
+//			showLoginScene();
+//		});
+//
+//		VBox contentVBox = new VBox();
+//		borderPane.setCenter(contentVBox);
+//
+//		ListView<String> gameListView = new ListView<>();
+//		GameList(gameListView);
+//		gameListView.setMaxWidth(220);
+//		gameListView.setMaxHeight(220);
+//
+//		contentVBox.getChildren().add(gameListView);
+//
+//		// buat display menu admin dibawah
+//		VBox detailsAndAdminVBox = new VBox();
+//
+//		VBox gameDetailsVBox = new VBox();
+//		detailsAndAdminVBox.getChildren().add(gameDetailsVBox);
+//
+//		GridPane adminMenuGridPane = new GridPane();
+//		adminMenuGridPane.setVgap(10);
+//
+//		Label changeTitleLabel = new Label("Game Title");
+//		TextField titleTextField = new TextField();
+//		adminMenuGridPane.add(changeTitleLabel, 0, 0);
+//		adminMenuGridPane.add(titleTextField, 1, 0);
+//
+//		Label changeDescriptionLabel = new Label("Game Description");
+//		TextField descriptionTextField = new TextField();
+//		adminMenuGridPane.add(changeDescriptionLabel, 0, 1);
+//		adminMenuGridPane.add(descriptionTextField, 1, 1);
+//
+//		Label changePriceLabel = new Label("Price");
+//		TextField priceTextField = new TextField();
+//		adminMenuGridPane.add(changePriceLabel, 0, 2);
+//		adminMenuGridPane.add(priceTextField, 1, 2);
+//
+//		Button addBtn = new Button("Add Game");
+//		addBtn.setOnAction(event -> {
+//			// Validate and add the game
+//			String gameID = generateGameID();
+//			if (validateGameInput(titleTextField.getText(), descriptionTextField.getText(), priceTextField.getText())) {
+//				addGame(titleTextField.getText(), descriptionTextField.getText(), priceTextField.getText(), gameID);
+//				showSuccessAlert("Game Added successfully!");
+//
+//				// Refresh the admin home scene
+//				AdminHomeScene();
+//			}
+//		});
+//
+//		Button updateBtn = new Button("Update Game");
+//
+//		updateBtn.setOnAction(event -> {
+//			if (!titleTextField.getText().isBlank()) {
+//				if (validateGameInput(titleTextField.getText(), descriptionTextField.getText(),
+//						priceTextField.getText())) {
+//					updateGame(toUpdate, titleTextField.getText(), descriptionTextField.getText(),
+//							priceTextField.getText());
+//					showSuccessAlert("Game Updated successfully!");
+//
+//					// Refresh the admin home scene
+//					AdminHomeScene();
+//				}
+//
+//			}
+//
+//		});
+//
+//		Button deleteBtn = new Button("Delete Game");
+//
+//		deleteBtn.setOnAction(event -> {
+//			if (!titleTextField.getText().isBlank()) {
+//
+//				deleteGame(toUpdate, titleTextField.getText());
+//				showSuccessAlert("Game Deleted successfully!");
+//
+//				// Refresh the admin home scene
+//				AdminHomeScene();
+//			}
+//
+//		});
+//
+//		VBox buttonVBox = new VBox(10);
+//		buttonVBox.getChildren().addAll(addBtn, updateBtn, deleteBtn);
+//
+//		adminMenuGridPane.add(buttonVBox, 0, 3, 2, 1);
+//
+//		detailsAndAdminVBox.getChildren().add(adminMenuGridPane);
+//
+//		contentVBox.getChildren().add(detailsAndAdminVBox);
+//
+//		gameListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+//
+//			if (newValue != null) {
+//				toUpdate = newName(newValue).get(0);
+//				showGameDetails(newValue, gameDetailsVBox);
+//				titleTextField.setText(newName(newValue).get(0));
+//				descriptionTextField.setText(newName(newValue).get(1));
+//				priceTextField.setText(newName(newValue).get(2));
+//
+//			}
+//
+//		});
+//
+//		Scene scene = new Scene(borderPane, 700, 700);
+//		primaryStage.setScene(scene);
+//		primaryStage.show();
+//	}
+
+	private void deleteGame(String toDelete, String inTextField) {
+		Connect connect = Connect.getConnection();
+		String query = "DELETE FROM Game WHERE GameName = ?";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+
+			statement.setString(1, toDelete);
+
+			int rowsAffected = statement.executeUpdate();
+
+			if (rowsAffected > 0) {
+				System.out.println("Game Deleted from the database.");
+			} else {
+				System.out.println("Failed to Delete game from the database.");
+			}
+			AdminHomeScene();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private void updateGame(String OriginalName, String GameName, String GameDescription, String GamePrice) {
+		Connect connect = Connect.getConnection();
+		String query = "UPDATE Game SET GameName = ?, GameDescription = ?, Price = ? WHERE GameName = ?";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, GameName);
+			statement.setString(2, GameDescription);
+			statement.setString(3, GamePrice);
+			statement.setString(4, OriginalName);
+
+			int rowsAffected = statement.executeUpdate();
+
+			if (rowsAffected > 0) {
+				System.out.println("Game Updated in the database.");
+			} else {
+				System.out.println("Failed to Update the game in the database.");
+			}
+			AdminHomeScene();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private ArrayList<String> newName(String selectedGameName) {
+		ArrayList toSend = new ArrayList<>();
+
+		Connect connect = Connect.getConnection();
+		String query = "SELECT GameName, GameDescription, Price FROM game WHERE GameName = ?";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, selectedGameName);
+			ResultSet resultSet = statement.executeQuery();
+			if (resultSet.next()) {
+				String gameName = resultSet.getString("GameName");
+				String gameDescription = resultSet.getString("GameDescription");
+				Double price = resultSet.getDouble("Price");
+
+				toSend.add(gameName);
+				toSend.add(gameDescription);
+				toSend.add(String.valueOf(price));
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return toSend;
+	}
+
+	private void addGame(String title, String description, String price, String gameID) {
+		Connect connect = Connect.getConnection();
+		String query = "INSERT INTO game (GameID, GameName, GameDescription, Price) VALUES (?, ?, ?, ?)";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, gameID);
+			statement.setString(2, title);
+			statement.setString(3, description);
+			statement.setDouble(4, Double.parseDouble(price));
+
+			int rowsAffected = statement.executeUpdate();
+
+			if (rowsAffected > 0) {
+				System.out.println("Game added to the database.");
+			} else {
+				System.out.println("Failed to add the game to the database.");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private boolean validateGameInput(String title, String description, String price) {
+		if (title.isEmpty() || description.isEmpty() || price.isEmpty()) {
+			showErrorAlert("All fields must be filled.");
+			return false;
+		}
+
+		if (title.length() > 50) {
+			showErrorAlert("Game Name cannot exceed 50 characters.");
+			return false;
+		}
+
+		if (description.length() > 250) {
+			showErrorAlert("Game Description cannot exceed 250 characters.");
+			return false;
+		}
+
+		try {
+			Double.parseDouble(price);
+		} catch (NumberFormatException e) {
+			showErrorAlert("Game Price must be numeric.");
+			return false;
+		}
+
+		if (price.length() > 10) {
+			showErrorAlert("Game Price cannot exceed 10 characters.");
+			return false;
+		}
+
+		return true;
+	}
+
+	private void showErrorAlert(String message) {
+		showAlert(Alert.AlertType.ERROR, "Error", message);
+	}
+
+	private void showSuccessAlert(String message) {
+		showAlert(Alert.AlertType.INFORMATION, "Success", message);
+	}
+
+	private String generateGameID() {
+		Connect connect = Connect.getConnection();
+
+		// hitung jumlah game
+		String query = "SELECT COUNT(*) AS gameCount FROM game";
+
+		try (PreparedStatement countStatement = connect.prepareStatement(query)) {
+			ResultSet resultSet = countStatement.executeQuery();
+			if (resultSet.next()) {
+				int gameCount = resultSet.getInt("gameCount");
+				// generate id dari jumlah game + 1 biar ga ada yg sama
+				int nextGameIndex = gameCount + 1;
+				return String.format("GA%03d", nextGameIndex);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		// kalo error
+		return "GA000";
+	}
+
+//  ---------------------------------------------------
+//  INI SHOW CUSTOMER HOME SCENE
+// ----------------------------------------------------
+
+	private void CustomerHomeScene() {
+		primaryStage.setTitle("SNeam");
+
+		role = 1.0;
+
+		BorderPane borderPane = new BorderPane();
+		borderPane.setStyle("-fx-background-color: #f0f0f0;");
+
+		VBox topContainer = new VBox();
+
+		MenuBar menuBar = new MenuBar();
+
+		Menu menu1 = new Menu("Dashboard");
+		MenuItem menuItem2 = new MenuItem("Cart");
+		menu1.getItems().addAll(menuItem2);
+
+		Menu menu2 = new Menu("Log Out");
+		MenuItem menuItem3 = new MenuItem("Log Out");
+		menu2.getItems().addAll(menuItem3);
+
+		menuItem2.setOnAction(event -> {
+			viewCart();
+		});
+
+		menuItem3.setOnAction(event -> {
+			showLoginScene();
+		});
+
+		menuBar.getMenus().addAll(menu1, menu2);
+
+		borderPane.setTop(menuBar);
+		topContainer.getChildren().add(menuBar);
+
+		Label welcomeLabel = new Label("Hello, " + LoggedUser.getLoggedUsername());
+		welcomeLabel.setStyle("-fx-font-size: 36; -fx-font-weight: bold;");
+		welcomeLabel.setPadding(new Insets(10, 0, 0, 10));
+		topContainer.setAlignment(Pos.CENTER);
+
+		topContainer.getChildren().add(welcomeLabel);
+
+		borderPane.setTop(topContainer);
+
+		HBox contentHBox = new HBox();
+		borderPane.setCenter(contentHBox);
+
+		ListView<String> gameListView = new ListView<>();
+		GameList(gameListView);
+		gameListView.setMaxWidth(220);
+		gameListView.setMaxHeight(220);
+		contentHBox.getChildren().add(gameListView);
+
+		Region space = new Region();
+		contentHBox.getChildren().add(space);
+		space.setPadding(new Insets(0, 10, 0, 10));
+
+		VBox gameDetailsVBox = new VBox();
+		contentHBox.getChildren().add(gameDetailsVBox);
+		contentHBox.setPadding(new Insets(0, 20, 0, 20));
+
+		gameListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) {
+				showGameDetails(newValue, gameDetailsVBox);
+			}
+		});
+
+		Scene scene = new Scene(borderPane, 700, 700);
+		primaryStage.setScene(scene);
+		primaryStage.show();
+	}
+
+	private void GameList(ListView<String> gameListView) {
+		Connect connect = Connect.getConnection();
+		String query = "SELECT GameName FROM game";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			ResultSet resultSet = statement.executeQuery();
+
+			gameListView.getItems().clear();
+
+			// display game data di list view
+			while (resultSet.next()) {
+				String gameName = resultSet.getString("GameName");
+				gameListView.getItems().add(gameName);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void showGameDetails(String selectedGameName, VBox gameDetailsVBox) {
+		// ambil data di database
+		Connect connect = Connect.getConnection();
+		String query = "SELECT * FROM game WHERE GameName = ?";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, selectedGameName);
+			ResultSet resultSet = statement.executeQuery();
+
+			if (resultSet.next()) {
+				String gameID = resultSet.getString("GameID");
+				String gameDescription = resultSet.getString("GameDescription");
+				double price = resultSet.getDouble("Price");
+
+				// display data di vbox
+				Label gameIDLabel = new Label("Game ID: " + gameID);
+				Label descriptionLabel = new Label("Description: " + gameDescription);
+				Label priceLabel = new Label("\nPrice: IDR " + price);
+
+				// styling font disini
+				gameIDLabel.setStyle("-fx-font-size: 16;  -fx-font-weight: bold;");
+				descriptionLabel.setStyle("-fx-font-size: 14;");
+				priceLabel.setStyle("-fx-font-size: 14;");
+
+				// word wrap description biar ga kanan semua
+				descriptionLabel.setWrapText(true);
+				descriptionLabel.setMaxWidth(400);
+
+				// nge clear previous display
+				gameDetailsVBox.getChildren().clear();
+				if (role == 1.0) {
+					Button addToCartButton = new Button("Add to Cart");
+					addToCartButton.setOnAction(e -> addToCartStage(selectedGameName));
+
+					Region spacer = new Region();
+					gameDetailsVBox.getChildren().add(spacer);
+
+					// VBOX DETAIL
+					VBox descT = new VBox();
+					descT.getChildren().addAll(gameIDLabel, descriptionLabel);
+
+					// KETENGAH!!!
+					VBox centeredContent = new VBox();
+					centeredContent.setAlignment(Pos.CENTER); // Menengahkan secara vertikal
+					centeredContent.setSpacing(10);
+					centeredContent.getChildren().addAll(priceLabel, addToCartButton);
+					gameDetailsVBox.getChildren().add(centeredContent);
+					gameDetailsVBox.setAlignment(Pos.TOP_CENTER);
+					gameDetailsVBox.getChildren().add(descT);
+
+					// Display data baru yg dipilih
+					gameDetailsVBox.getChildren().addAll(priceLabel, addToCartButton);
+				}
+				if (role == 2.0) {
+					Region spacer = new Region();
+					gameDetailsVBox.getChildren().add(spacer);
+
+					// VBOX DETAIL
+					VBox descT = new VBox();
+					descT.getChildren().addAll(gameIDLabel, descriptionLabel);
+
+					// KETENGAH!!!
+					VBox centeredContent = new VBox();
+					centeredContent.setAlignment(Pos.CENTER); // Menengahkan secara vertikal
+					centeredContent.setSpacing(10);
+					centeredContent.getChildren().addAll(priceLabel);
+					gameDetailsVBox.getChildren().add(centeredContent);
+					gameDetailsVBox.setAlignment(Pos.TOP_CENTER);
+					gameDetailsVBox.getChildren().add(descT);
+
+					// Display data baru yg dipilih
+					gameDetailsVBox.getChildren().addAll(priceLabel);
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void addToCartStage(String selectedGameName) {
+		Stage cartConfirmationStage = new Stage();
+		cartConfirmationStage.setTitle("Add to Cart");
+
+		BorderPane borderPane = new BorderPane();
+		VBox cartConfirmationVBox = new VBox();
+		cartConfirmationVBox.setAlignment(Pos.TOP_CENTER);
+
+		Label headerLabel = new Label("Add to Cart");
+		headerLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+		headerLabel.setStyle("-fx-text-fill: white;");
+
+		BorderPane.setAlignment(headerLabel, Pos.CENTER);
+		BorderPane.setMargin(headerLabel, new Insets(10, 0, 10, 0));
+
+		StackPane headerPane = new StackPane();
+		headerPane.setStyle("-fx-background-color: black;");
+		headerPane.getChildren().add(headerLabel);
+		BorderPane.setAlignment(headerPane, Pos.CENTER);
+		BorderPane.setMargin(headerPane, new Insets(10, 0, 10, 0));
+		borderPane.setTop(headerPane);
+
+		Label gameNameLabel = new Label(selectedGameName);
+		gameNameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+		gameNameLabel.setAlignment(Pos.CENTER);
+		cartConfirmationVBox.getChildren().add(gameNameLabel);
+
+		String query = "SELECT * FROM game WHERE GameName = ?";
+		try (PreparedStatement statement = Connect.getConnection().prepareStatement(query)) {
+			statement.setString(1, selectedGameName);
+			ResultSet resultSet = statement.executeQuery();
+
+			if (resultSet.next()) {
+				String gameDescription = resultSet.getString("GameDescription");
+				double price = resultSet.getDouble("Price");
+
+				Label descriptionLabel = new Label("Description: " + gameDescription);
+				descriptionLabel.setWrapText(true);
+				descriptionLabel.setMaxWidth(400);
+				descriptionLabel.setAlignment(Pos.CENTER);
+
+				Label priceLabel = new Label("Price: IDR " + price);
+				priceLabel.setAlignment(Pos.CENTER);
+
+				Spinner<Integer> quantitySpinner = new Spinner<>(0, 10, 0);
+
+				// Cek kalo game uda ada di cart atau belum
+				if (cartContainsGame(selectedGameName)) {
+					int currentQuantity = cartQuantity(selectedGameName);
+					quantitySpinner.getValueFactory().setValue(currentQuantity);
+				}
+
+				Button addToCartButton = new Button("Add to Cart");
+				addToCartButton.setAlignment(Pos.CENTER);
+				addToCartButton.setOnAction(event -> {
+					int quantity = quantitySpinner.getValue();
+
+					if (quantity == 0) {
+						// Kalo quantity 0, delete game di cart
+						if (cartContainsGame(selectedGameName)) {
+							deleteFromCart(selectedGameName);
+						}
+					} else {
+						// kalo bukan 0
+						if (cartContainsGame(selectedGameName)) {
+							// update quantity dengan quantity yang baru
+							updateCartQuantity(selectedGameName, quantity);
+						} else {
+							// kalo di cart belum ada gamenya, add baru
+							addToCart(selectedGameName, quantity);
+						}
+					}
+
+					cartConfirmationStage.close();
+				});
+
+				cartConfirmationVBox.getChildren().addAll(descriptionLabel, priceLabel, quantitySpinner,
+						addToCartButton);
+				borderPane.setCenter(cartConfirmationVBox);
+				BorderPane.setMargin(cartConfirmationVBox, new Insets(20));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		Scene scene = new Scene(borderPane, 400, 400);
+		cartConfirmationStage.setScene(scene);
+		cartConfirmationStage.show();
+	}
+
+	private boolean cartContainsGame(String selectedGameName) {
+		Connect connect = Connect.getConnection();
+		String loggedInUserID = LoggedUser.getLoggedUserID();
+		String query = "SELECT COUNT(*) AS gameCount FROM cart WHERE UserID = ? AND GameID IN (SELECT GameID FROM game WHERE GameName = ?)";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, loggedInUserID);
+			statement.setString(2, selectedGameName);
+			ResultSet resultSet = statement.executeQuery();
+
+			if (resultSet.next()) {
+				int gameCount = resultSet.getInt("gameCount");
+				return gameCount > 0;
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		return false;
+	}
+
+	private int cartQuantity(String selectedGameName) {
+		Connect connect = Connect.getConnection();
+		String loggedInUserID = LoggedUser.getLoggedUserID();
+		String query = "SELECT Quantity FROM cart WHERE UserID = ? AND GameID IN (SELECT GameID FROM game WHERE GameName = ?)";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, loggedInUserID);
+			statement.setString(2, selectedGameName);
+			ResultSet resultSet = statement.executeQuery();
+
+			if (resultSet.next()) {
+				return resultSet.getInt("Quantity");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		return 0;
+	}
+
+	private void updateCartQuantity(String selectedGameName, int quantity) {
+		Connect connect = Connect.getConnection();
+		String loggedInUserID = LoggedUser.getLoggedUserID();
+
+		String gameIDQuery = "SELECT GameID FROM game WHERE GameName = ?";
+		String gameID = "";
+
+		try (PreparedStatement gameIDStatement = connect.prepareStatement(gameIDQuery)) {
+			gameIDStatement.setString(1, selectedGameName);
+			ResultSet gameIDResultSet = gameIDStatement.executeQuery();
+
+			if (gameIDResultSet.next()) {
+				gameID = gameIDResultSet.getString("GameID");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		String updateQuery = "UPDATE cart SET Quantity = ? WHERE UserID = ? AND GameID = ?";
+
+		try (PreparedStatement updateStatement = connect.prepareStatement(updateQuery)) {
+			updateStatement.setInt(1, quantity);
+			updateStatement.setString(2, loggedInUserID);
+			updateStatement.setString(3, gameID);
+
+			int rowsAffected = updateStatement.executeUpdate();
+
+			if (rowsAffected > 0) {
+				System.out.println("Cart quantity updated successfully!");
+			} else {
+				System.out.println("Failed to update cart quantity.");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void deleteFromCart(String selectedGameName) {
+		Connect connect = Connect.getConnection();
+		String loggedInUserID = LoggedUser.getLoggedUserID();
+
+		String gameIDQuery = "SELECT GameID FROM game WHERE GameName = ?";
+		String gameID = "";
+
+		try (PreparedStatement gameIDStatement = connect.prepareStatement(gameIDQuery)) {
+			gameIDStatement.setString(1, selectedGameName);
+			ResultSet gameIDResultSet = gameIDStatement.executeQuery();
+
+			if (gameIDResultSet.next()) {
+				gameID = gameIDResultSet.getString("GameID");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		String deleteQuery = "DELETE FROM cart WHERE UserID = ? AND GameID = ?";
+
+		try (PreparedStatement deleteStatement = connect.prepareStatement(deleteQuery)) {
+			deleteStatement.setString(1, loggedInUserID);
+			deleteStatement.setString(2, gameID);
+
+			int rowsAffected = deleteStatement.executeUpdate();
+
+			if (rowsAffected > 0) {
+				System.out.println("Game deleted from cart successfully!");
+			} else {
+				System.out.println("Failed to delete game from cart.");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	// ADD TO CART
+
+	private void addToCart(String selectedGameName, int quantity) {
+		Connect connect = Connect.getConnection();
+
+		String loggedInUserID = LoggedUser.getLoggedUserID();
+
+		// Ambil game ID berdasarkan nama game
+		String gameIDQuery = "SELECT GameID FROM game WHERE GameName = ?";
+		String gameID = "";
+
+		try (PreparedStatement gameIDStatement = connect.prepareStatement(gameIDQuery)) {
+			gameIDStatement.setString(1, selectedGameName);
+			ResultSet gameIDResultSet = gameIDStatement.executeQuery();
+
+			if (gameIDResultSet.next()) {
+				gameID = gameIDResultSet.getString("GameID");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		String insertQuery = "INSERT INTO cart (UserID, GameID, Quantity) VALUES (?, ?, ?)";
+
+		try (PreparedStatement insertStatement = connect.prepareStatement(insertQuery)) {
+			insertStatement.setString(1, loggedInUserID);
+			insertStatement.setString(2, gameID);
+			insertStatement.setInt(3, quantity);
+
+			int rowsAffected = insertStatement.executeUpdate();
+
+			if (rowsAffected > 0) {
+				System.out.println("Item added to cart successfully!");
+			} else {
+				System.out.println("Failed to add item to cart.");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+// ---------------------------------------------------------------------------------------------
+//	 VIEW CART
+// ---------------------------------------------------------------------------------------------
+
+	private void viewCart() {
+		Connect connect = Connect.getConnection();
+
+		primaryStage.setTitle("SNeam");
+
+		BorderPane borderPane = new BorderPane();
+		borderPane.setStyle("-fx-background-color: #f0f0f0;");
+
+		MenuBar menuBar = new MenuBar();
+
+		Menu menu1 = new Menu("Dashboard");
+		MenuItem menuItem1 = new MenuItem("Home");
+		menu1.getItems().addAll(menuItem1);
+
+		Menu menu2 = new Menu("Log Out");
+		MenuItem menuItem3 = new MenuItem("Log Out");
+		menu2.getItems().addAll(menuItem3);
+
+		menuItem1.setOnAction(event -> {
+			CustomerHomeScene();
+		});
+
+		menuItem3.setOnAction(event -> {
+			showLoginScene();
+		});
+
+		menuBar.getMenus().addAll(menu1, menu2);
+
+		Label yourCartLabel = new Label("Your Cart");
+		yourCartLabel.setStyle("-fx-font-size: 20; -fx-font-weight: bold;");
+		BorderPane.setAlignment(yourCartLabel, Pos.CENTER);
+		BorderPane.setMargin(yourCartLabel, new Insets(10, 0, 10, 0));
+
+		TableView<CartItem> cartItemsTable = new TableView<>();
+		cartItemsTable.setPrefSize(600, 400);
+		BorderPane.setMargin(cartItemsTable, new Insets(20));
+
+		HBox headerRow = new HBox();
+		headerRow.setStyle("-fx-font-weight: bold;");
+		headerRow.getChildren().addAll(createColumnLabel("Name"), createColumnLabel("Price"),
+				createColumnLabel("Quantity"), createColumnLabel("Total"));
+
+		cartItemsTable.setTableMenuButtonVisible(true);
+		cartItemsTable.setTableMenuButtonVisible(true);
+		cartItemsTable.setPlaceholder(new Label("No items in the cart"));
+		cartItemsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+		cartItemsTable.setPrefWidth(600);
+
+		Label grandTotalLabel = new Label("Grand Total: IDR ");
+		grandTotalLabel.setStyle("-fx-font-size: 16; -fx-font-weight: bold;");
+		BorderPane.setAlignment(grandTotalLabel, Pos.CENTER);
+		BorderPane.setMargin(grandTotalLabel, new Insets(10, 0, 10, 0));
+
+		Button checkoutButton = new Button("Checkout");
+		checkoutButton.setOnAction(event -> {
+			if (cartItemsTable.getItems().isEmpty()) {
+				emptyCartAlert();
+			} else {
+				String loggedInUserID = LoggedUser.getLoggedUserID();
+				int amount = cartItemsTable.getItems().size();
+
+				generateTransactionID();
+
+				Integer itemAmount = cartItemsTable.getItems().size();
+
+				// create transactionHeader COlumn
+
+				String addTransaction = "INSERT INTO TransactionHeader VALUES (?, ?)";
+				String id = generateTransactionID();
+
+				try (PreparedStatement newTransaction = connect.prepareStatement(addTransaction)) {
+
+					newTransaction.setString(1, id);
+					newTransaction.setString(2, loggedInUserID);
+					newTransaction.executeUpdate();
+					System.out.println(id);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+//				for (int i = 0; i < amount; i++) {
+
+				String collectOrder = "SELECT GameId, Quantity FROM Cart WHERE UserID = ?";
+				try (PreparedStatement getData = connect.prepareStatement(collectOrder)) {
+					getData.setString(1, loggedInUserID);
+
+					ResultSet resultSet = getData.executeQuery();
+					while (resultSet.next()) {
+						// Retrieve data from the current row
+						String GameId = resultSet.getString("GameId");
+						Double Quantity = resultSet.getDouble("Quantity");
+
+						System.out.println(GameId);
+						System.out.println(Quantity);
+						String addTransactionDet = "INSERT INTO TransactionDetail VALUES (?,?,?)";
+						try (PreparedStatement insertData = connect.prepareStatement(addTransactionDet)) {
+							insertData.setString(1, id);
+							insertData.setString(2, GameId);
+							insertData.setDouble(3, Quantity);
+							insertData.executeUpdate();
+						} catch (Exception e2) {
+							e2.printStackTrace();
+						}
+
+					}
+				} catch (SQLException e1) {
+
+					e1.printStackTrace();
+				}
+
+//				}
+				String deleteQuery = "DELETE FROM cart WHERE UserID = ?";
+
+				try (PreparedStatement clearStatement = connect.prepareStatement(deleteQuery)) {
+					clearStatement.setString(1, loggedInUserID);
+
+					int rowsAffected = clearStatement.executeUpdate();
+
+					if (rowsAffected > 0) {
+						System.out.println("Game deleted from cart successfully!");
+						getCartItems(cartItemsTable);
+						updateGrandTotalLabel(cartItemsTable, grandTotalLabel);
+						showAlert(AlertType.INFORMATION, "Checkout Info", "Transaction Successful");
+					} else {
+						System.out.println("Failed to delete game from cart.");
+					}
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+
+			}
+		});
+		checkoutButton.setAlignment(Pos.CENTER);
+		checkoutButton.setPadding(new Insets(10));
+
+		VBox bottomVBox = new VBox(10);
+		bottomVBox.setAlignment(Pos.CENTER);
+		bottomVBox.getChildren().addAll(grandTotalLabel, checkoutButton);
+
+		borderPane.setTop(menuBar);
+		borderPane.setCenter(cartItemsTable);
+		borderPane.setBottom(bottomVBox);
+
+		VBox topVBox = new VBox();
+		topVBox.getChildren().addAll(menuBar, yourCartLabel);
+		borderPane.setTop(topVBox);
+
+		getCartItems(cartItemsTable);
+		updateGrandTotalLabel(cartItemsTable, grandTotalLabel);
+
+		Scene scene = new Scene(borderPane, 700, 700);
+		primaryStage.setScene(scene);
+		primaryStage.show();
+	}
+
+	private void emptyCartAlert() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Invalid Request");
+		alert.setHeaderText("Cart is empty.");
+		alert.setContentText("Transaction is not possible");
+
+		alert.getButtonTypes().setAll(ButtonType.OK);
+
+		alert.showAndWait();
+	}
+
+	private void showAlert(Alert.AlertType alertType, String title, String content) {
+		Alert alert = new Alert(alertType);
+		alert.setTitle(title);
+		alert.setHeaderText(null);
+		alert.setContentText(content);
+		alert.showAndWait();
+	}
+
+	private String generateTransactionID() {
+		Connect connect = Connect.getConnection();
+
+		// hitung jumlah game
+		String query = "SELECT COUNT(*) AS totalTransaction FROM transactionHeader";
+
+		try (PreparedStatement countStatement = connect.prepareStatement(query)) {
+			ResultSet resultSet = countStatement.executeQuery();
+			if (resultSet.next()) {
+				int totalTransaction = resultSet.getInt("totalTransaction");
+				// generate id dari jumlah game + 1 biar ga ada yg sama
+				int nextTransactionIndex = totalTransaction + 1;
+				return String.format("TR%03d", nextTransactionIndex);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		// kalo error
+		return "TR000";
+	}
+
+	private int insertTransactionHeader(String transactionID, String userID) throws SQLException {
+		Connect connect = Connect.getConnection();
+		String insertTransactionHeaderQuery = "INSERT INTO TransactionHeader (TransactionID, UserID) VALUES (?, ?)";
+
+		try (PreparedStatement insertTransactionHeaderStatement = connect
+				.prepareStatement(insertTransactionHeaderQuery)) {
+			insertTransactionHeaderStatement.setString(1, transactionID);
+			insertTransactionHeaderStatement.setString(2, userID);
+
+			return insertTransactionHeaderStatement.executeUpdate();
+		}
+	}
+
+	private void insertTransactionDetail(int transactionID, String gameID, int quantity) throws SQLException {
+		Connect connect = Connect.getConnection();
+		String insertTDQuery = "INSERT INTO TransactionDetail (TransactionID, GameID, Quantity) VALUES (?, ?, ?)";
+
+		try (PreparedStatement insertTDStatement = connect.prepareStatement(insertTDQuery)) {
+			insertTDStatement.setInt(1, transactionID);
+			insertTDStatement.setString(2, gameID);
+			insertTDStatement.setInt(3, quantity);
+
+			int rowsAffectedDetail = insertTDStatement.executeUpdate();
+
+			if (rowsAffectedDetail <= 0) {
+				// Handle failure to insert transaction detail
+				System.err.println("Failed to insert transaction detail for game: " + gameID);
+			}
+		}
+	}
+
+	private Label createColumnLabel(String text) {
+		Label label = new Label(text);
+		label.setStyle("-fx-padding: 0 20 0 0;");
+		return label;
+	}
+
+	private void updateGrandTotalLabel(TableView<CartItem> cartItemsTable, Label grandTotalLabel) {
+		double grandTotal = calculateGrandTotal(cartItemsTable);
+		grandTotalLabel.setText("Grand Total: IDR " + grandTotal);
+	}
+
+	// FUNCTION BUAT CALCULATE GRAND TOTAL
+	private double calculateGrandTotal(TableView<CartItem> cartItemsTable) {
+		double grandTotal = 0.0;
+
+		for (CartItem item : cartItemsTable.getItems()) {
+			grandTotal += item.getTotal();
+		}
+
+		return grandTotal;
+	}
+
+	private void getCartItems(TableView<CartItem> cartItemsTable) {
+		Connect connect = Connect.getConnection();
+		String loggedInUserID = LoggedUser.getLoggedUserID();
+
+		String query = "SELECT game.GameName, game.Price, cart.Quantity, (game.Price * cart.Quantity) AS Total "
+				+ "FROM cart " + "JOIN game ON cart.GameID = game.GameID " + "WHERE cart.UserID = ?";
+
+		try (PreparedStatement statement = connect.prepareStatement(query)) {
+			statement.setString(1, loggedInUserID);
+			ResultSet resultSet = statement.executeQuery();
+
+			TableColumn<CartItem, String> nameColumn = new TableColumn<>("Name");
+			nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+
+			TableColumn<CartItem, String> priceColumn = new TableColumn<>("Price");
+			priceColumn.setCellValueFactory(new PropertyValueFactory<>("formattedPrice"));
+
+			TableColumn<CartItem, Integer> quantityColumn = new TableColumn<>("Quantity");
+			quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+
+			TableColumn<CartItem, String> totalColumn = new TableColumn<>("Total");
+			totalColumn.setCellValueFactory(new PropertyValueFactory<>("formattedTotal"));
+
+			cartItemsTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, totalColumn);
+
+			ObservableList<CartItem> cartItemsList = FXCollections.observableArrayList();
+
+			while (resultSet.next()) {
+				cartItemsList.add(new CartItem(resultSet.getString("GameName"), resultSet.getDouble("Price"),
+						resultSet.getInt("Quantity"), resultSet.getDouble("Total")));
+			}
+
+			cartItemsTable.setItems(cartItemsList);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+}

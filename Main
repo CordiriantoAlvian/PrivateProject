@@ -1,0 +1,215 @@
+package apps;
+
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import Database.Connect;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.geometry.HPos;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
+
+
+public class Main extends Application {
+	Scene scene;
+	BorderPane BorderContainer;
+	GridPane GridContainer;
+	FlowPane FlowContainer;
+	TextField Name,Email;
+	PasswordField Password,RePassword;
+	Label UserName,UserEmail,UserPassword,UserRePass;
+	Button Login,Register,Add;
+	private Stage primaryStage;
+	public Main() {
+		
+	}
+
+	public static void main(String[] args) {
+		launch (args);
+
+	}
+
+	
+	public void loginScene() {
+
+		    primaryStage.setTitle("Warehouse Management System");
+		    BorderContainer = new BorderPane();
+		    GridContainer = new GridPane();
+		    MenuBar menuBar = new MenuBar();
+		    Menu menu = new Menu("Menu");
+		    MenuItem registerItem = new MenuItem("Register");
+		    registerItem.setOnAction(e -> RegisterScene());
+		    menu.getItems().add(registerItem);
+		    menuBar.getMenus().add(menu);
+
+		    Label logintitle = new Label("LOGIN");
+		    logintitle.setFont(Font.font("poppins", FontWeight.BOLD, 32));
+
+		    // Add the login title label to the GridContainer
+		    GridContainer.setAlignment(Pos.CENTER);
+		    GridPane.setColumnSpan(logintitle, 10);
+		    GridPane.setHalignment(logintitle, HPos.CENTER);
+
+		    // Add padding to the top of the GridContainer to move the title up
+		    GridContainer.setPadding(new Insets(-100, 20, 20, 20));
+
+		    GridContainer.setHgap(10);
+		    GridContainer.setVgap(10);
+		    GridContainer.add(logintitle, 0, 0, 2, 1);
+
+		    // Set the menuBar once
+		    BorderContainer.setTop(menuBar);
+
+		    // Set the GridContainer to the center of BorderContainer
+		    BorderContainer.setCenter(GridContainer);
+
+		    Email = new TextField ();
+		    UserEmail = new Label("Email :");
+		    GridContainer.add(Email, 1, 1);
+		    GridContainer.add(UserEmail,0,1);
+		    
+		    Password = new PasswordField();
+		    UserPassword = new Label("Password :");
+		    GridContainer.add(Password, 1, 2);
+		    GridContainer.add(UserPassword, 0, 2);
+		    
+		    Scene scene = new Scene(BorderContainer, 700, 700);
+		    primaryStage.setScene(scene);
+		    primaryStage.show();
+		    
+		    Login = new Button("Login");
+		    GridContainer.add(Login, 1, 4, 2, 1);
+		    Login.setOnAction(e-> {
+		    String email = Email.getText();
+			String password = Password.getText();
+			 if (email.equals("AdminHR@gmail.com") && password.equals("Admin123")) {
+			        System.out.println("Admin login successful.");
+			        AdminScene(); // Method to switch to admin scene
+			    } else {
+			        // Proceed with normal user validation
+			        boolean loginSuccess = validateLogin(email, password);
+			        if (loginSuccess) {
+			            System.out.println("User login successful.");
+			            HomeScene(); // Switch to home scene
+			        } else {
+			        	InvalidAlert();
+			            
+			        }
+			    }
+		    });
+	} 
+		
+	
+	private boolean validateLogin(String email, String password) {
+		   try {
+		        Connect connect = Connect.getConnection();
+		        String sql = "SELECT * FROM users WHERE email = ? AND password = ?";
+		        PreparedStatement statement = connect.prepareStatement(sql);
+		        statement.setString(1, email);
+		        statement.setString(2, password); 
+
+		        ResultSet resultSet = statement.executeQuery();
+		        if (resultSet.next()) {
+		            return true; // Login successful
+		        }
+		    } catch (SQLException e) {
+		        e.printStackTrace();
+		        // Handle exceptions
+		    }
+		    return false; // Login failed
+		}
+	
+		private void RegisterScene() {
+		    primaryStage.setTitle("Warehouse Management System");
+
+		    BorderPane borderContainer = new BorderPane();
+		    GridPane gridContainer = new GridPane();
+
+		    // Set up the menu bar
+		    MenuBar menuBar = new MenuBar();
+		    Menu menu = new Menu("Menu");
+		    MenuItem loginItem = new MenuItem("Login");
+		    loginItem.setOnAction(e -> loginScene());
+		    menu.getItems().add(loginItem);
+		    menuBar.getMenus().add(menu);
+
+		    // Set up the title label
+		    Label registerTitle = new Label("REGISTER");
+		    registerTitle.setFont(Font.font("Poppins", FontWeight.BOLD, 32));
+
+		    // Create an HBox for centering the title
+		    HBox titleBox = new HBox(registerTitle);
+		    titleBox.setAlignment(Pos.CENTER);
+		    titleBox.setPadding(new Insets(10, 0, 10, 0)); // Add some padding if needed
+
+		    // Create a VBox to hold the menu bar and the centered title
+		    VBox topContainer = new VBox(menuBar, titleBox);
+		    borderContainer.setTop(topContainer); // Place the VBox at the top of the BorderPane
+
+		    // Configure the GridContainer
+		    gridContainer.setAlignment(Pos.CENTER);
+		    gridContainer.setHgap(10);
+		    gridContainer.setVgap(10);
+		    gridContainer.setPadding(new Insets(20, 20, 20, 20));
+
+		    // Add other components to the GridContainer
+		    // ...
+		    UserEmail = new Label("Email :");
+		    Email =  new TextField ();
+		    gridContainer.add(UserEmail, 0, -10);
+		    
+		    gridContainer.add(Email, 1, -10);
+		    borderContainer.setCenter(gridContainer); // Set the GridContainer to the center of BorderContainer
+
+		    Scene scene = new Scene(borderContainer, 700, 700);
+		    primaryStage.setScene(scene);
+		}
+		
+		
+	private void InvalidAlert() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Invalid Credentials");
+		alert.setContentText("Incorrect Email or Password, Please try again");
+		
+	}
+	private void HomeScene() {
+		  Label logintitle = new Label("HOME");
+		    logintitle.setFont(Font.font("poppins", FontWeight.BOLD, 32));
+	}
+	
+	private void AdminScene() {
+		  primaryStage.setTitle("Warehouse Management System");
+		  Scene scene = new Scene(BorderContainer, 700, 700);
+		    primaryStage.setScene(scene);
+		    primaryStage.show();
+		 Label logintitle = new Label("ADMIN");
+		    logintitle.setFont(Font.font("poppins", FontWeight.BOLD, 32));
+	}
+	@Override
+	public void start(Stage primaryStage) throws Exception {
+		this.primaryStage = primaryStage;
+		loginScene();
+	}
+
+}
